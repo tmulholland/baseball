@@ -21,7 +21,21 @@ class Abstract(object):
         elif 'Parks' in str(self.__class__) or 'Parks' in str(other.__class__):
             Copy.df = self.df.merge(other.df,on='park_id')
 
+        ## PitchFx, EventLogs, and EventInfo can all be merged on 'identifier' 
+        else:
+            Copy.df = self.df.merge(other.df,on='identifier')
+
         return Copy
+
+class Parks(Abstract):
+
+    def __init__(self,):
+        
+        ## parks data from Seamheads
+        self.df = pd.read_csv('data/misc/Seamheads/Parks.csv')
+
+        ## use 'park_id' convention to match GameLogs
+        self.df['park_id']=self.df['PARKID']
 
 class GameLogs(Abstract):
 
@@ -97,13 +111,31 @@ class GameLogs(Abstract):
 
         ## pandas data frame from corresponding year
         self.df = pd.read_csv('data/'+str(self.year)+'/GL'+str(self.year)+'.TXT', names=self.column_names)
-        
-class Parks(Abstract):
 
-    def __init__(self,):
-        
-        ## parks data from Seamheads
-        self.df = pd.read_csv('data/misc/Seamheads/Parks.csv')
+        ## identifier common to event dataframes
+        self.df['identifier'] = self.df.apply(lambda x: 
+                                              str(x.date)+x.home_team+x.away_team+str(x.game_number),
+                                              axis=1) 
 
-        ## use 'park_id' convention to match GameLogs
-        self.df['park_id']=self.df['PARKID']
+
+
+
+class EventInfo(Abstract):
+
+    def __init__(self, year):
+
+        ## output from event_parser.csh
+        self.year = year
+
+        ## pandas data frame from corresponding year
+        self.df = pd.read_csv('data/'+str(self.year)+'/event_info_'+str(self.year)+'.csv')
+
+        ## identifier common to event dataframes
+        self.df['identifier'] = self.df.apply(lambda x: 
+                                              x.date.replace("/","")+x.hometeam+x.visteam+str(x.number), 
+                                              axis=1)
+
+        ## keep columns not already in EventLogs
+        self.df = self.df[['starttime','usedh','howscored','pitches','oscorer',
+                           'temp','winddir','windspeed','fieldcond','precip',
+                           'sky','timeofgame','identifier']]
