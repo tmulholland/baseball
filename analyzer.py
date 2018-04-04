@@ -27,6 +27,54 @@ class Abstract(object):
 
         return Copy
 
+    def add_time_zone(self,):
+
+        try:
+            assert ('Longitude' in self.df.columns and 'Latitude' in self.df.columns)
+        except:
+            print "ERROR: must have Longitude and Latitude as columns to compute time zone"
+            
+            return 0
+
+        ## time zone finder
+        tf = TimezoneFinder()
+
+        self.df['time_zone'] = self.df.apply(lambda x: tf.timezone_at(lng=x.Longitude, lat=x.Latitude), 
+                                             axis=1)
+        
+
+    def get_unix_from_time_stamp(self,x):
+        
+        ## time stamp of first pitch
+        stamp = dt.datetime.strptime(x.time_stamp,'%Y%m%d%I:%M%p')
+        ## start of unix time
+        start = dt.datetime(1970,1,1) 
+    
+        ## park time zone
+        prk_tz = pytz.timezone(x.time_zone)
+        ## gmt time zone (for unix stamp)
+        gmt_tz = pytz.timezone("GMT")
+    
+        start = gmt_tz.localize(start)
+        stamp = prk_tz.localize(stamp)
+    
+        return int((stamp-start).total_seconds())
+
+    def add_time_stamp(self,):
+
+        self.df['time_stamp'] = self.df.apply(lambda x: str(x.date)+str(x.starttime),axis=1)
+
+        if 'time_zone' not in self.df.columns:
+            self.add_time_zone()
+
+        self.df['unix_time_start'] = self.df.apply(lambda x: self.get_unix_from_time_stamp(x), axis=1)
+
+        self.df['unix_time_end'] = self.df.unix_time_start + self.df.game_length_min*60
+
+        self.df['year'] = self.df.apply(lambda x: x.time_stamp[:4],axis=1)
+        self.df['month'] = self.df.apply(lambda x: x.time_stamp[4:6],axis=1)
+        self.df['day'] = self.df.apply(lambda x: x.time_stamp[6:8],axis=1)
+
 class Parks(Abstract):
 
     def __init__(self,):
