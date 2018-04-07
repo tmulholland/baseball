@@ -29,7 +29,7 @@ def get_mlb_url(x):
 
 ## Get start and end years from console
 start = int(raw_input("First year to scrape (leave blank to use earliest): ") 
-            or "2006")
+            or "2007")
 end = int(raw_input("Last year to scrape (leave blank to use latest): ")
           or "2017")
 years = range(start, end+1)
@@ -48,7 +48,14 @@ for year in years:
     ## add base url
     Games.df['mlb_url'] = Games.df.apply(lambda x: get_mlb_url(x), axis=1)
 
+    ## counter to report number of successful scrapes 
+    n_scraped = 0
+
     for index, row in Games.df.iterrows():
+
+        ## in 2007, pitchfx was not installed in cambden yards or RFK Stadium
+        #if year==2007 and (row.park_id=='BAL12' or row.park_id=='WAS10'):
+        #    continue
 
         ## progress indicator
         if index%100==0 and index>0:
@@ -61,9 +68,14 @@ for year in years:
         ## contains all relavent info for entire game
         url = row.mlb_url + "inning/inning_all.xml"
 
-        ## Use BeautifulSoup module with lxml to parse PITCHf/x data
-        game_soup = BeautifulSoup(urllib2.urlopen(url),'lxml')
-
+        try:
+            ## Use BeautifulSoup module with lxml to parse PITCHf/x data
+            game_soup = BeautifulSoup(urllib2.urlopen(url),'lxml')
+            ## if succesful, increment scrape
+            n_scraped+=1
+        except:
+            # if not successful, skip game
+            continue
         
         ## pitch columns to add to dataframe
         ## not all games have every field,
@@ -190,8 +202,10 @@ for year in years:
     pfx_df = pd.concat(g_dfs)
 
     ## save to csv in year directory structure
-    pfx_df.to_csv('data/'+year+'/pfx'+year+'.csv')
-
+    pfx_df.to_csv('data/'+str(year)+'/pfx'+str(year)+'.csv', encoding='utf-8')
+    
+    p_scraped = round(100*float(n_scraped)/Games.df.shape[0],2)
+    print "Percentage of succesfull scrapes:", str(p_scraped)+"%"
     ## clear year from memory 
     del Games
     del pfx_df
