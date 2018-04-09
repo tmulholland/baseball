@@ -62,18 +62,157 @@ class Abstract(object):
 
     def add_time_stamp(self,):
 
-        self.df['time_stamp'] = self.df.apply(lambda x: str(x.date)+str(x.starttime),axis=1)
+        self.df['time_stamp'] = self.df.apply(lambda x: str(x.date)+str(x.starttime),
+                                              axis=1)
 
         if 'time_zone' not in self.df.columns:
             self.add_time_zone()
 
-        self.df['unix_time_start'] = self.df.apply(lambda x: self.get_unix_from_time_stamp(x), axis=1)
+        self.df['unix_time_start'] = self.df.apply(lambda x: self.get_unix_from_time_stamp(x), 
+                                                   axis=1)
 
         self.df['unix_time_end'] = self.df.unix_time_start + self.df.game_length_min*60
 
         self.df['year'] = self.df.apply(lambda x: x.time_stamp[:4],axis=1)
         self.df['month'] = self.df.apply(lambda x: x.time_stamp[4:6],axis=1)
         self.df['day'] = self.df.apply(lambda x: x.time_stamp[6:8],axis=1)
+
+    def add_jet_lag(self,):
+        """For each 24hrs, jet lag is reduced by 1 hr until there is no jet lag"""
+
+        def direction(tdiff):
+            """ Computes direction of time difference travel 
+
+            Args:
+                 Time difference (positive, negative, or zero)
+            
+            Returns:
+                 Westward, Eastward, or '' (for no travel)
+            """
+
+            if tdiff<0:
+                return 'Eastward'
+            if tdiff>0:
+                return 'Westward'
+            return ''
+
+        def get_lag_direction(x, home_or_away):
+            """Takes dataframe and home/away status and returns direction of jet lag"""
+            
+            if x[home_or_away+'_jet_lag']==0:
+                return ''
+            if x[home_or_away+'_jet_lag']==x[home_or_away+'_time_zones_crossed_in_last_24hrs']:
+                return x[home_or_away+'_time_zones_crossed_direction_in_last_24hrs']
+            if x[home_or_away+'_jet_lag']==x[home_or_away+'_time_zones_crossed_in_last_48hrs']-1:
+                return x[home_or_away+'_time_zones_crossed_direction_in_last_48hrs']
+            if x[home_or_away+'_jet_lag']==x[home_or_away+'_time_zones_crossed_in_last_72hrs']-2:
+                return x[home_or_away+'_time_zones_crossed_direction_in_last_72hrs']
+
+
+        home_time_zones_crossed_in_last_24hrs = []
+        away_time_zones_crossed_in_last_24hrs = []
+        home_time_zones_crossed_in_last_48hrs = []
+        away_time_zones_crossed_in_last_48hrs = []
+        home_time_zones_crossed_in_last_72hrs = []
+        away_time_zones_crossed_in_last_72hrs = []
+
+        home_time_zones_crossed_direction_in_last_24hrs = []
+        away_time_zones_crossed_direction_in_last_24hrs = []
+        home_time_zones_crossed_direction_in_last_48hrs = []
+        away_time_zones_crossed_direction_in_last_48hrs = []
+        home_time_zones_crossed_direction_in_last_72hrs = []
+        away_time_zones_crossed_direction_in_last_72hrs = []
+
+
+        for index, row in self.df.iterrows():
+            home_team_games = self.df[(self.df.home_team==row.home_team) | (self.df.away_team==row.home_team)]
+            away_team_games = self.df[(self.df.home_team==row.away_team) | (self.df.away_team==row.away_team)]
+
+            home_hours_since = (row.unix_time_start - home_team_games.unix_time_end)/(60.*60)
+            away_hours_since = (row.unix_time_start - away_team_games.unix_time_end)/(60.*60)
+
+            home_time_zones_24 = home_team_games[(home_hours_since>0) & (home_hours_since<24)].time_zone.unique()
+            away_time_zones_24 = away_team_games[(away_hours_since>0) & (away_hours_since<24)].time_zone.unique()
+            home_time_zones_48 = home_team_games[(home_hours_since>0) & (home_hours_since<48)].time_zone.unique()
+            away_time_zones_48 = away_team_games[(away_hours_since>0) & (away_hours_since<48)].time_zone.unique()
+            home_time_zones_72 = home_team_games[(home_hours_since>0) & (home_hours_since<72)].time_zone.unique()
+            away_time_zones_72 = away_team_games[(away_hours_since>0) & (away_hours_since<72)].time_zone.unique()
+    
+            tz = pytz.timezone(row.time_zone)
+            game_dt = dt.datetime.fromtimestamp(row.unix_time_start)
+    
+            home_tzs_24 = [pytz.timezone(tz_24) for tz_24 in home_time_zones_24]
+            away_tzs_24 = [pytz.timezone(tz_24) for tz_24 in away_time_zones_24]
+            home_tzs_48 = [pytz.timezone(tz_48) for tz_48 in home_time_zones_48]
+            away_tzs_48 = [pytz.timezone(tz_48) for tz_48 in away_time_zones_48]
+            home_tzs_72 = [pytz.timezone(tz_72) for tz_72 in home_time_zones_72]
+            away_tzs_72 = [pytz.timezone(tz_72) for tz_72 in away_time_zones_72]
+            
+            home_change_24 = [abs((tz.localize(game_dt)-tz_24.localize(game_dt)).total_seconds()/(60.*60)) for tz_24 in home_tzs_24]
+            away_change_24 = [abs((tz.localize(game_dt)-tz_24.localize(game_dt)).total_seconds()/(60.*60)) for tz_24 in away_tzs_24]
+            home_dir_24 = [direction((tz.localize(game_dt)-tz_24.localize(game_dt)).total_seconds()) for tz_24 in home_tzs_24]
+            away_dir_24 = [direction((tz.localize(game_dt)-tz_24.localize(game_dt)).total_seconds()) for tz_24 in away_tzs_24]
+
+            home_change_48 = [abs((tz.localize(game_dt)-tz_48.localize(game_dt)).total_seconds()/(60.*60)) for tz_48 in home_tzs_48]
+            away_change_48 = [abs((tz.localize(game_dt)-tz_48.localize(game_dt)).total_seconds()/(60.*60)) for tz_48 in away_tzs_48]
+            home_dir_48 = [direction((tz.localize(game_dt)-tz_48.localize(game_dt)).total_seconds()) for tz_48 in home_tzs_48]
+            away_dir_48 = [direction((tz.localize(game_dt)-tz_48.localize(game_dt)).total_seconds()) for tz_48 in away_tzs_48]
+    
+            home_change_72 = [abs((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()/(60.*60)) for tz_72 in home_tzs_72]
+            away_change_72 = [abs((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()/(60.*60)) for tz_72 in away_tzs_72]
+            home_dir_72 = [direction((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()) for tz_72 in home_tzs_72]
+            away_dir_72 = [direction((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()) for tz_72 in away_tzs_72]
+   
+            if 'Westward' in home_dir_72 and 'Eastward' in home_dir_72:
+                print "Error... Ambiguous direction"
+                assert True==False
+            if 'Westward' in away_dir_72 and 'Eastward' in away_dir_72:
+                print "Warning... Ambiguous direction"
+                assert True==False
+    
+
+            home_time_zones_crossed_in_last_24hrs.append( max(home_change_24+[0.0]))
+            away_time_zones_crossed_in_last_24hrs.append( max(away_change_24+[0.0]))
+            home_time_zones_crossed_in_last_48hrs.append( max(home_change_48+[0.0]))
+            away_time_zones_crossed_in_last_48hrs.append( max(away_change_48+[0.0]))
+            home_time_zones_crossed_in_last_72hrs.append( max(home_change_72+[0.0]))
+            away_time_zones_crossed_in_last_72hrs.append( max(away_change_72+[0.0]))
+                
+            home_time_zones_crossed_direction_in_last_24hrs.append( max(home_dir_24+['']))
+            away_time_zones_crossed_direction_in_last_24hrs.append( max(away_dir_24+['']))
+            home_time_zones_crossed_direction_in_last_48hrs.append( max(home_dir_48+['']))
+            away_time_zones_crossed_direction_in_last_48hrs.append( max(away_dir_48+['']))
+            home_time_zones_crossed_direction_in_last_72hrs.append( max(home_dir_72+['']))
+            away_time_zones_crossed_direction_in_last_72hrs.append( max(away_dir_72+['']))
+
+        self.df['home_time_zones_crossed_in_last_24hrs'] = home_time_zones_crossed_in_last_24hrs
+        self.df['away_time_zones_crossed_in_last_24hrs'] = away_time_zones_crossed_in_last_24hrs
+        self.df['home_time_zones_crossed_in_last_48hrs'] = home_time_zones_crossed_in_last_48hrs
+        self.df['away_time_zones_crossed_in_last_48hrs'] = away_time_zones_crossed_in_last_48hrs
+        self.df['home_time_zones_crossed_in_last_72hrs'] = home_time_zones_crossed_in_last_72hrs
+        self.df['away_time_zones_crossed_in_last_72hrs'] = away_time_zones_crossed_in_last_72hrs
+
+
+        self.df['home_time_zones_crossed_direction_in_last_24hrs'] = home_time_zones_crossed_direction_in_last_24hrs
+        self.df['away_time_zones_crossed_direction_in_last_24hrs'] = away_time_zones_crossed_direction_in_last_24hrs
+        self.df['home_time_zones_crossed_direction_in_last_48hrs'] = home_time_zones_crossed_direction_in_last_48hrs
+        self.df['away_time_zones_crossed_direction_in_last_48hrs'] = away_time_zones_crossed_direction_in_last_48hrs
+        self.df['home_time_zones_crossed_direction_in_last_72hrs'] = home_time_zones_crossed_direction_in_last_72hrs
+        self.df['away_time_zones_crossed_direction_in_last_72hrs'] = away_time_zones_crossed_direction_in_last_72hrs    
+    
+    
+        self.df['home_jet_lag'] = self.df.apply(lambda x: max(x.home_time_zones_crossed_in_last_24hrs, 
+                                                              x.home_time_zones_crossed_in_last_48hrs-1,
+                                                              x.home_time_zones_crossed_in_last_72hrs-2,
+                                                          ), axis=1)
+        self.df['home_jet_lag_direction'] = self.df.apply(lambda x: get_lag_direction(x,'home'), axis=1)
+
+        self.df['away_jet_lag'] = self.df.apply(lambda x: max(x.away_time_zones_crossed_in_last_24hrs, 
+                                                              x.away_time_zones_crossed_in_last_48hrs-1,
+                                                              x.away_time_zones_crossed_in_last_72hrs-2,
+                                                          ), axis=1)
+        self.df['away_jet_lag_direction'] = self.df.apply(lambda x: get_lag_direction(x,'away'), axis=1)
+
 
 class Parks(Abstract):
 
@@ -187,3 +326,13 @@ class EventInfo(Abstract):
         self.df = self.df[['starttime','usedh','howscored','pitches','oscorer',
                            'temp','winddir','windspeed','fieldcond','precip',
                            'sky','timeofgame','identifier']]
+
+class PITCHfx(Abstract):
+
+    def __init__(self, year):
+
+        ## output from event_parser.csh
+        self.year = year
+
+        ## pandas data frame from corresponding year
+        self.df = pd.read_csv('data/'+str(self.year)+'/pfx'+str(self.year)+'.csv')
