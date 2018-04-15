@@ -21,6 +21,15 @@ class Abstract(object):
         elif 'Parks' in str(self.__class__) or 'Parks' in str(other.__class__):
             Copy.df = self.df.merge(other.df,on='park_id')
 
+        ## else if the self or other class is an instane of PlayerMap, then merge on player id
+        elif 'PlayerMap' in str(self.__class__) or 'PlayerMap' in str(other.__class__):
+            ## PITCHf/x uses mlb id
+            if 'PITCHfx' in str(self.__class__) or 'PITCHfx' in str(other.__class__):
+                Copy.df = self.df.merge(other.df,on='mlb_id')
+            ## else use retro_id 
+            else:
+                Copy.df = self.df.merge(other.df,on='retro_id')
+
         ## PitchFx, EventLogs, and EventInfo can all be merged on 'identifier' 
         else:
             Copy.df = self.df.merge(other.df,on='identifier')
@@ -312,8 +321,6 @@ class GameLogs(Abstract):
                                               axis=1) 
 
 
-
-
 class EventInfo(Abstract):
 
     def __init__(self, year):
@@ -343,3 +350,9 @@ class PITCHfx(Abstract):
 
         ## pandas data frame from corresponding year
         self.df = pd.read_csv('data/'+str(self.year)+'/pfx'+str(self.year)+'.csv')
+
+class PlayerMap(Abstract):
+
+    def __init__(self,):
+
+        self.df = pd.read_csv('data/misc/crunchtime/master.csv')
