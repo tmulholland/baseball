@@ -27,6 +27,20 @@ class Abstract(object):
 
         return Copy
 
+    def __radd__(self, other):
+
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+    def slim_frame(self,cols_to_keep):
+
+        tmp_df = self.df[cols_to_keep]
+        del self.df
+
+        self.df = tmp_df
+
     def add_time_zone(self,):
 
         try:
@@ -162,13 +176,6 @@ class Abstract(object):
             away_change_72 = [abs((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()/(60.*60)) for tz_72 in away_tzs_72]
             home_dir_72 = [direction((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()) for tz_72 in home_tzs_72]
             away_dir_72 = [direction((tz.localize(game_dt)-tz_72.localize(game_dt)).total_seconds()) for tz_72 in away_tzs_72]
-   
-            if 'Westward' in home_dir_72 and 'Eastward' in home_dir_72:
-                print "Error... Ambiguous direction"
-                assert True==False
-            if 'Westward' in away_dir_72 and 'Eastward' in away_dir_72:
-                print "Warning... Ambiguous direction"
-                assert True==False
     
 
             home_time_zones_crossed_in_last_24hrs.append( max(home_change_24+[0.0]))
@@ -322,7 +329,7 @@ class EventInfo(Abstract):
                                               x.date.replace("/","")+x.hometeam+x.visteam+str(x.number), 
                                               axis=1)
 
-        ## keep columns not already in EventLogs
+        ## keep columns not already in GameLogs
         self.df = self.df[['starttime','usedh','howscored','pitches','oscorer',
                            'temp','winddir','windspeed','fieldcond','precip',
                            'sky','timeofgame','identifier']]
