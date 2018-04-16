@@ -146,7 +146,9 @@ class Abstract(object):
         home_time_zones_crossed_direction_in_last_72hrs = []
         away_time_zones_crossed_direction_in_last_72hrs = []
 
-
+        home_dist_traveled_in_last_24hrs = []
+        away_dist_traveled_in_last_24hrs = []
+        
         for index, row in self.df.iterrows():
             home_team_games = self.df[(self.df.home_team==row.home_team) | (self.df.away_team==row.home_team)]
             away_team_games = self.df[(self.df.home_team==row.away_team) | (self.df.away_team==row.away_team)]
@@ -160,7 +162,13 @@ class Abstract(object):
             away_time_zones_48 = away_team_games[(away_hours_since>0) & (away_hours_since<48)].time_zone.unique()
             home_time_zones_72 = home_team_games[(home_hours_since>0) & (home_hours_since<72)].time_zone.unique()
             away_time_zones_72 = away_team_games[(away_hours_since>0) & (away_hours_since<72)].time_zone.unique()
-    
+
+            home_lats_24 = home_team_games[(home_hours_since>0) & (home_hours_since<24)].Latitude.unique()
+            home_lngs_24 = home_team_games[(home_hours_since>0) & (home_hours_since<24)].Longitude.unique()
+
+            away_lats_24 = away_team_games[(away_hours_since>0) & (away_hours_since<24)].Latitude.unique()
+            away_lngs_24 = away_team_games[(away_hours_since>0) & (away_hours_since<24)].Longitude.unique()
+
             tz = pytz.timezone(row.time_zone)
             game_dt = dt.datetime.fromtimestamp(row.unix_time_start)
     
@@ -170,6 +178,9 @@ class Abstract(object):
             away_tzs_48 = [pytz.timezone(tz_48) for tz_48 in away_time_zones_48]
             home_tzs_72 = [pytz.timezone(tz_72) for tz_72 in home_time_zones_72]
             away_tzs_72 = [pytz.timezone(tz_72) for tz_72 in away_time_zones_72]
+
+            home_dist_24 = [vincenty(coords, (row.Latitude, row.Longitude)).miles for coords in zip(home_lats_24, home_lngs_24)]
+            away_dist_24 = [vincenty(coords, (row.Latitude, row.Longitude)).miles for coords in zip(away_lats_24, away_lngs_24)]
             
             home_change_24 = [abs((tz.localize(game_dt)-tz_24.localize(game_dt)).total_seconds()/(60.*60)) for tz_24 in home_tzs_24]
             away_change_24 = [abs((tz.localize(game_dt)-tz_24.localize(game_dt)).total_seconds()/(60.*60)) for tz_24 in away_tzs_24]
@@ -201,6 +212,9 @@ class Abstract(object):
             home_time_zones_crossed_direction_in_last_72hrs.append( max(home_dir_72+['']))
             away_time_zones_crossed_direction_in_last_72hrs.append( max(away_dir_72+['']))
 
+            home_dist_traveled_in_last_24hrs.append( max(home_dist_24+[0.0]))
+            away_dist_traveled_in_last_24hrs.append( max(away_dist_24+[0.0]))
+            
         self.df['home_time_zones_crossed_in_last_24hrs'] = home_time_zones_crossed_in_last_24hrs
         self.df['away_time_zones_crossed_in_last_24hrs'] = away_time_zones_crossed_in_last_24hrs
         self.df['home_time_zones_crossed_in_last_48hrs'] = home_time_zones_crossed_in_last_48hrs
@@ -208,14 +222,15 @@ class Abstract(object):
         self.df['home_time_zones_crossed_in_last_72hrs'] = home_time_zones_crossed_in_last_72hrs
         self.df['away_time_zones_crossed_in_last_72hrs'] = away_time_zones_crossed_in_last_72hrs
 
-
         self.df['home_time_zones_crossed_direction_in_last_24hrs'] = home_time_zones_crossed_direction_in_last_24hrs
         self.df['away_time_zones_crossed_direction_in_last_24hrs'] = away_time_zones_crossed_direction_in_last_24hrs
         self.df['home_time_zones_crossed_direction_in_last_48hrs'] = home_time_zones_crossed_direction_in_last_48hrs
         self.df['away_time_zones_crossed_direction_in_last_48hrs'] = away_time_zones_crossed_direction_in_last_48hrs
         self.df['home_time_zones_crossed_direction_in_last_72hrs'] = home_time_zones_crossed_direction_in_last_72hrs
         self.df['away_time_zones_crossed_direction_in_last_72hrs'] = away_time_zones_crossed_direction_in_last_72hrs    
-    
+
+        self.df['home_dist_traveled_in_last_24hrs'] = home_dist_traveled_in_last_24hrs
+        self.df['away_dist_traveled_in_last_24hrs'] = away_dist_traveled_in_last_24hrs
     
         self.df['home_jet_lag'] = self.df.apply(lambda x: max(x.home_time_zones_crossed_in_last_24hrs, 
                                                               x.home_time_zones_crossed_in_last_48hrs-1,
