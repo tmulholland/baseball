@@ -100,6 +100,48 @@ class Abstract(object):
         self.df['month'] = self.df.apply(lambda x: x.time_stamp[4:6],axis=1)
         self.df['day'] = self.df.apply(lambda x: x.time_stamp[6:8],axis=1)
 
+    def add_travel_columns(self,knots=500):
+
+        home_dist_last_travel_game = []
+        away_dist_last_travel_game = []
+
+        for index, row in self.df.iterrows():
+            
+            home_games = self.df[self.df.home_team==row.home_team]
+            distance = 0.0
+            for game in xrange(row.home_team_game_num-1,0,-1):
+                tmp_df = self.df[((self.df.home_team_game_num==game) &
+                                  (self.df.home_team==row.home_team)) | 
+                                 ((self.df.away_team_game_num==game) &
+                                  (self.df.away_team==row.home_team)) ]
+                if tmp_df.park_id.values[0] != row.park_id:
+                    distance = vincenty((row.Latitude, row.Longitude), 
+                                        (tmp_df.Latitude.values[0], 
+                                         tmp_df.Longitude.values[0])).miles
+                    break
+            home_dist_last_travel_game.append(distance)
+
+            away_games = self.df[self.df.away_team==row.away_team]
+            distance = 0.0
+            for game in xrange(row.away_team_game_num-1,0,-1):
+                tmp_df = self.df[((self.df.home_team_game_num==game) &
+                                  (self.df.home_team==row.away_team)) | 
+                                 ((self.df.away_team_game_num==game) &
+                                  (self.df.away_team==row.away_team)) ]
+                if tmp_df.park_id.values[0] != row.park_id:
+                    distance = vincenty((row.Latitude, row.Longitude), 
+                                        (tmp_df.Latitude.values[0], 
+                                         tmp_df.Longitude.values[0])).miles
+                    break
+            away_dist_last_travel_game.append(distance)
+
+        self.df['home_distance_since_last_travel_game'] = home_dist_last_travel_game
+        self.df['away_distance_since_last_travel_game'] = away_dist_last_travel_game
+
+        ## 1 knot = 1.15 mph
+        self.df['home_travel_time_since_last_travel_game'] = np.array(home_dist_last_travel_game)/(knots*1.15)
+        self.df['away_travel_time_since_last_travel_game'] = np.array(away_dist_last_travel_game)/(knots*1.15)
+
     def add_jet_lag(self,):
         """For each 24hrs, jet lag is reduced by 1 hr until there is no jet lag"""
 
@@ -150,18 +192,34 @@ class Abstract(object):
         away_dist_traveled_in_last_24hrs = []
         
         for index, row in self.df.iterrows():
-            home_team_games = self.df[(self.df.home_team==row.home_team) | (self.df.away_team==row.home_team)]
-            away_team_games = self.df[(self.df.home_team==row.away_team) | (self.df.away_team==row.away_team)]
+            home_team_games = self.df[(self.df.home_team==row.home_team) | 
+                                      (self.df.away_team==row.home_team)]
+            away_team_games = self.df[(self.df.home_team==row.away_team) | 
+                                      (self.df.away_team==row.away_team)]
 
-            home_hours_since = (row.unix_time_start - home_team_games.unix_time_end)/(60.*60)
-            away_hours_since = (row.unix_time_start - away_team_games.unix_time_end)/(60.*60)
+            home_hours_since = (row.unix_time_start 
+                                - home_team_games.unix_time_end)/(60.*60)
+            away_hours_since = (row.unix_time_start 
+                                - away_team_games.unix_time_end)/(60.*60)
 
-            home_time_zones_24 = home_team_games[(home_hours_since>0) & (home_hours_since<24)].time_zone.unique()
-            away_time_zones_24 = away_team_games[(away_hours_since>0) & (away_hours_since<24)].time_zone.unique()
-            home_time_zones_48 = home_team_games[(home_hours_since>0) & (home_hours_since<48)].time_zone.unique()
-            away_time_zones_48 = away_team_games[(away_hours_since>0) & (away_hours_since<48)].time_zone.unique()
-            home_time_zones_72 = home_team_games[(home_hours_since>0) & (home_hours_since<72)].time_zone.unique()
-            away_time_zones_72 = away_team_games[(away_hours_since>0) & (away_hours_since<72)].time_zone.unique()
+            home_time_zones_24 = home_team_games[(home_hours_since>0) & 
+                                                 (home_hours_since<24+
+                                                  row.home_travel_time_since_last_travel_game)].time_zone.unique()
+            away_time_zones_24 = away_team_games[(away_hours_since>0) & 
+                                                 (away_hours_since<24+
+                                                  row.away_travel_time_since_last_travel_game)].time_zone.unique()
+            home_time_zones_48 = home_team_games[(home_hours_since>0) & 
+                                                 (home_hours_since<48+
+                                                  row.home_travel_time_since_last_travel_game)].time_zone.unique()
+            away_time_zones_48 = away_team_games[(away_hours_since>0) & 
+                                                 (away_hours_since<48+
+                                                  row.away_travel_time_since_last_travel_game)].time_zone.unique()
+            home_time_zones_72 = home_team_games[(home_hours_since>0) & 
+                                                 (home_hours_since<72+
+                                                  row.home_travel_time_since_last_travel_game)].time_zone.unique()
+            away_time_zones_72 = away_team_games[(away_hours_since>0) & 
+                                                 (away_hours_since<72+
+                                                  row.away_travel_time_since_last_travel_game)].time_zone.unique()
 
             home_lats_24 = home_team_games[(home_hours_since>0) & (home_hours_since<24)].Latitude.unique()
             home_lngs_24 = home_team_games[(home_hours_since>0) & (home_hours_since<24)].Longitude.unique()
