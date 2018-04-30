@@ -44,10 +44,82 @@ class Abstract(object):
             return self.__add__(other)
 
     def slim_frame(self,cols_to_keep):
+        """List of columns to keep, remove others"""
 
         tmp_df = self.df[cols_to_keep]
         del self.df
 
+        self.df = tmp_df
+
+    def filter_by_pitch_type(self, pitch_type):
+        """
+        Subset the dataframe by pitch types
+        """
+
+        ## fastball, four-seam, two-seam, cutter, sinker, split-fingered
+        fastballs = ['FA', 'FF', 'FT', 'FC', 'FS', 'SI', 'SF']
+
+        ## slider, changeup, curveball, knuckle-curve, knuckle ball, eephus
+        off_speed = ['SL', 'CH', 'CB', 'CU', 'KC', 'KN', 'EP']
+
+        if 'fastball' in pitch_type.lower():
+            tmp_df = self.df[ self.df.pitch_type.isin(fastballs) ]
+        elif 'breaking' in pitch_type.lower() or 'off' in pitch_type.lower():
+            tmp_df = self.df[ self.df.pitch_type.isin(off_speed) ]
+        elif type(pitch_type) is list:
+            tmp_df = self.df[ self.df.pitch_type.isin(pitch_type) ]
+        else:
+            tmp_df = self.df[ self.df.pitch_type==pitch_type ]
+
+        del self.df
+        self.df = tmp_df
+
+    def filter_by_team(self, team_name, keep=True):
+        """
+        Subset the dataframe by team (home and away)
+        keep==True (default) means keep only team,
+        otherwise, keep all other teams
+        """
+
+        mask = (self.df.home_team==team_name) | (self.df.away_team==team_name)
+
+        if keep:
+            tmp_df = self.df[mask]
+        else:
+            tmp_df = self.df[~mask]
+
+        del self.df
+        self.df = tmp_df
+
+    def filter_by_starting_pitchers(self, pitcher_ids, keep=True):
+        """
+        Args:
+            starting pitcher retro id or list of starting pitcher retro ids
+
+        Subset the dataframe by starting pitcher ids (home and away)
+        keep==True (default) means keep only starting pitchers,
+        otherwise, keep all other pitchers
+        """
+
+        ## convert to list if given one pitcher name as a string
+        if type(pitcher_ids) is str:
+            pitcher_ids = [pitcher_ids]
+
+        ## initialize mask of Falses
+        mask = pd.Series([False]*self.df.shape[0])
+
+        for pitcher in pitcher_ids:
+            mask = mask | ( ((self.df.home_starting_pitcher_id==pitcher) & 
+                             (self.df.retro_id==pitcher)) |
+                            ((self.df.away_starting_pitcher_id==pitcher) &
+                             (self.df.retro_id==pitcher)) )
+
+        if keep:
+            tmp_df = self.df[mask]
+        else:
+            tmp_df = self.df[~mask]
+
+        del self.df
         self.df = tmp_df
 
     def add_time_zone(self,):
@@ -114,11 +186,13 @@ class Abstract(object):
                                   (self.df.home_team==row.home_team)) | 
                                  ((self.df.away_team_game_num==game) &
                                   (self.df.away_team==row.home_team)) ]
+                
                 if tmp_df.park_id.values[0] != row.park_id:
                     distance = vincenty((row.Latitude, row.Longitude), 
-                                        (tmp_df.Latitude.values[0], 
-                                         tmp_df.Longitude.values[0])).miles
+                                            (tmp_df.Latitude.values[0], 
+                                             tmp_df.Longitude.values[0])).miles
                     break
+ape
             home_dist_last_travel_game.append(distance)
 
             away_games = self.df[self.df.away_team==row.away_team]
