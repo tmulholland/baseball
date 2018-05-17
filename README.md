@@ -9,14 +9,14 @@ Scrape and analyze MLB data from several sources:
 
 Python analysis of data involves seamless combination of data sources. 
 Example:
-`
+```
 ## game log class instance
 GL = analyzer.GameLogs(2017)
 ## PITCHf/x class instance
 Pfx = analyzer.PITCHfx(2017)
 ## overload addition operator to merge on game id
 Pfx_GL = Pfx+GL
-`
+```
 
 ## Getting Started
 
