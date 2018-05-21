@@ -1,7 +1,7 @@
 # Major League Baseball Analysis
 
 Scrape and analyze MLB data from several sources:
-* PITCHf/x
+* PITCHf/x and Statcast/TrackMan
 * retrosheet game logs
 * retrosheet event logs
 * Seamheads ballparks database
@@ -28,17 +28,19 @@ Pfx_GL = Pfx+GL
 
 This project has been tested on ubuntu linux with python 2.7
 
+Please see example_notebook.ipynb for a quick dive
+
 ### Prerequisites
 
 python packages to install:
-zipfile
-pandas
-numpy
-pytz 
-geopy 
-timezonefinder
-urllib2
-BeautifulSoup
+zipfile  
+pandas  
+numpy  
+pytz  
+geopy  
+timezonefinder  
+urllib2  
+BeautifulSoup  
 
 ```
 Give examples
