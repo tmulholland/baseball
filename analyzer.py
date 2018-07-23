@@ -122,6 +122,35 @@ class Abstract(object):
         del self.df
         self.df = tmp_df
 
+    def filter_by_pitchers(self, pitcher_ids, keep=True):
+        """
+        Args:
+            pitcher retro id or list of starting pitcher retro ids
+
+        Subset the dataframe by pitcher ids (home and away)
+        keep==True (default) means keep only starting pitchers,
+        otherwise, keep all other pitchers
+        """
+
+        ## convert to list if given one pitcher name as a string
+        if type(pitcher_ids) is str:
+            pitcher_ids = [pitcher_ids]
+
+        ## initialize mask of Falses
+        mask = pd.Series([False]*self.df.shape[0])
+
+        for pitcher in pitcher_ids:
+            mask = mask | ( self.df.retro_id==pitcher  )
+
+        if keep:
+            tmp_df = self.df[mask]
+        else:
+            tmp_df = self.df[~mask]
+
+        del self.df
+        self.df = tmp_df
+
+
     def add_time_zone(self,):
 
         try:
@@ -192,7 +221,7 @@ class Abstract(object):
                                             (tmp_df.Latitude.values[0], 
                                              tmp_df.Longitude.values[0])).miles
                     break
-ape
+
             home_dist_last_travel_game.append(distance)
 
             away_games = self.df[self.df.away_team==row.away_team]
