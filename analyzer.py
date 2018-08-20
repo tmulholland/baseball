@@ -184,7 +184,7 @@ class Abstract(object):
     
         return int((stamp-start).total_seconds())
 
-    def add_time_stamp(self,):
+    def add_time_stamp(self, set_index=True):
 
         self.df['time_stamp'] = self.df.apply(lambda x: str(x.date)+str(x.starttime),
                                               axis=1)
@@ -201,6 +201,10 @@ class Abstract(object):
         self.df['month'] = self.df.apply(lambda x: x.time_stamp[4:6],axis=1)
         self.df['day'] = self.df.apply(lambda x: x.time_stamp[6:8],axis=1)
 
+        if set_index:
+            self.df['time_stamp'] = pd.to_datetime(self.df.unix_time_start, unit='s')
+            self.df.index=pd.to_datetime(self.df.time_stamp, unit='s')
+        
     def add_travel_columns(self,knots=500):
 
         home_dist_last_travel_game = []
