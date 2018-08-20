@@ -7,7 +7,9 @@ Scrape and analyze MLB data from several sources:
 * Seamheads ballparks database
 * Cruchtime player name mapping
 
-![alt text](https://raw.githubusercontent.com/tmulholland/baseball/master/figs/jon-gray-2017.png)
+![alt text](https://raw.githubusercontent.com/tmulholland/baseball/master/figs/kyle-hendricks-2016.png)
+
+![alt text](https://raw.githubusercontent.com/tmulholland/baseball/master/figs/jon-lester-box.png)
 
 Python analysis of data involves seamless combination of data sources. 
 Example:
@@ -30,7 +32,8 @@ Please see example_notebook.ipynb for a quick dive
 
 ### Prerequisites
 
-python packages to install:  
+python packages to install:
+```
 zipfile  
 pandas  
 numpy  
@@ -40,3 +43,4 @@ timezonefinder
 urllib2  
 BeautifulSoup  
 
+```
